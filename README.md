@@ -162,3 +162,5 @@ equipos pequeños; las empresas más grandes pagan la suya. Sloth no está afili
 Anthropic ni por OpenAI.
 
 <p align="center"><sub>Hecho por <a href="https://vancci.org">Vancci</a> en México</sub></p>
+#   s l o t h _ p e r s o n a l i z a d o  
+ 
