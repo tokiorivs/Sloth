@@ -6,16 +6,16 @@ import { conectarCDP } from '../playwright.ts'
 import type { CuentaInvestigacion, RedVertical } from '../../shared/types.ts'
 import { cerrar } from '../redes/navegador.ts'
 import { Detenido } from './youtube.ts'
+import { chromiumDelSistema, SIN_CHROMIUM } from '../chromium.ts'
 
 /**
- * El navegador de las cuentas de investigación: un Edge con su propio perfil (`data/investigacion/perfil`) donde viven una
+ * El navegador de las cuentas de investigación: Chrome o Edge con su propio perfil (`data/investigacion/perfil`) donde viven una
  * cuenta de TikTok y una de Instagram que solo buscan, nunca las que publican (`server/redes/navegador.ts`): lo que una red
  * le haga a una cuenta que busca mucho no le pasa a la tuya. Lo comparten `tiktok.ts` e `instagram-web.ts`: una operación
  * a la vez, cada una en su pestaña, y la que pide algo a una persona (un captcha, verificar la cuenta) se queda al frente.
  */
 
 const PUERTO = 9335
-const EDGE = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe']
 const PASAPORTE = 'https://www.tiktok.com/passport/web/account/info/?aid=1988'
 /** Lo que pide la página de Instagram al abrir «Editar perfil»: trae el usuario, sin abrir pestaña. */
 const FORMULARIO = 'https://www.instagram.com/api/v1/accounts/edit/web_form_data/'
@@ -70,8 +70,8 @@ function silenciar() {
 
 /** Lo abre como el de las redes, con su perfil y su puerto. Sin sonido: cada pestaña de la investigación reproduce videos. */
 async function lanzar(app: string) {
-  const edge = EDGE.find((e) => existsSync(e))
-  if (!edge) throw new Error('No encontré Microsoft Edge, que es el navegador con el que Sloth investiga TikTok e Instagram.')
+  const edge = chromiumDelSistema(true)
+  if (!edge) throw new Error(process.platform === 'win32' ? 'No encontré Google Chrome ni Microsoft Edge, que es el navegador con el que Sloth investiga.' : SIN_CHROMIUM)
   const perfil = join(app, 'data', 'investigacion', 'perfil')
   mkdirSync(perfil, { recursive: true })
   // Sin sincronizar: es un perfil de trabajo, y no tiene por qué traerse tus ajustes ni tus pestañas de otros equipos.

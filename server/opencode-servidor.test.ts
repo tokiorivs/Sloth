@@ -66,6 +66,7 @@ const modulos: Record<string, string> = {
   './navegador-agente.ts': 'export const navegadorAgente = () => ({playwright:{command:"node",args:[]}})',
   './voz/index.ts': 'export const mcpVoz = () => ({})',
   './flow/index.ts': 'export const mcpFlow = () => ({})',
+  './mcp-externos.ts': 'export const mcpExternos = () => ({})',
   './skills.ts': 'export const SKILLS = "skills"'
 }
 registerHooks({ resolve(specifier, context, next) {

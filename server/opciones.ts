@@ -13,6 +13,7 @@ import { preguntarAlRegistro } from './registro.ts'
 const YOUTUBE = 'YOUTUBE_API_KEY'
 /** El token de Meta (inicio de sesión con Facebook) con que Ideas lee Instagram. No es el de la nube, que publica. */
 const META = 'INSTAGRAM_META_TOKEN'
+export const FISH_AUDIO = 'FISH_AUDIO_API_KEY'
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
 /**
@@ -93,17 +94,23 @@ export function escribir(nombre: string, valor: string | null) {
 const final = (llave: string) => (llave ? { final: llave.slice(-4) } : null)
 
 export function opciones(): Opciones {
-  const meta = leer(META)
+  const meta = tokenMeta()
   if (meta) void mirarCaduca(meta)
   return {
-    youtube: final(leer(YOUTUBE)),
-    meta: meta ? { final: meta.slice(-4), caduca: caducaMeta?.token === meta ? caducaMeta.en : undefined } : null
+    youtube: final(llaveYoutube()),
+    meta: meta ? { final: meta.slice(-4), caduca: caducaMeta?.token === meta ? caducaMeta.en : undefined } : null,
+    fish_audio: final(llaveFishAudio())
   }
 }
 
 /** La llave de la API de YouTube, si la hay: la del proceso, o la que se guardó después de arrancar. */
 export function llaveYoutube(): string {
   return process.env[YOUTUBE] || leer(YOUTUBE)
+}
+
+/** La clave de API de Fish Audio para síntesis de voz, si la hay. */
+export function llaveFishAudio(): string {
+  return process.env[FISH_AUDIO] || leer(FISH_AUDIO)
 }
 
 /** Igual, el token de Meta. */
@@ -159,6 +166,23 @@ export async function guardarMeta(token: string | null): Promise<Opciones> {
     await mirarCaduca(token)
   }
   escribir(META, token)
+  return opciones()
+}
+
+/** Prueba la clave de Fish Audio antes de guardarla. `null` la quita. */
+export async function guardarFishAudio(llave: string | null): Promise<Opciones> {
+  if (llave) {
+    const res = await fetch('https://api.fish.audio/model?page_size=1', {
+      headers: { Authorization: `Bearer ${llave}` }
+    })
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Fish Audio no aceptó esa llave. Revísala y vuelve a pegarla.')
+      }
+      throw new Error(`Fish Audio respondió ${res.status}.`)
+    }
+  }
+  escribir(FISH_AUDIO, llave)
   return opciones()
 }
 

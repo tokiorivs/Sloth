@@ -23,3 +23,15 @@ test('en Windows, leer contesta sin lanzar nada lo mismo que preguntarle a reg',
   assert.equal(leer('SLOTH_ESTA_NO_EXISTE'), '')
   assert.equal(lanzar.mock.callCount(), 0, 'la que no está no lanza reg')
 })
+
+test('opciones devuelve la clave de Fish Audio formateada con sus últimos 4 caracteres', async () => {
+  const { opciones } = await import('./opciones.ts')
+  const antes = process.env.FISH_AUDIO_API_KEY
+  try {
+    process.env.FISH_AUDIO_API_KEY = 'fish_12345678abcd'
+    assert.deepEqual(opciones().fish_audio, { final: 'abcd' })
+  } finally {
+    if (antes === undefined) delete process.env.FISH_AUDIO_API_KEY
+    else process.env.FISH_AUDIO_API_KEY = antes
+  }
+})

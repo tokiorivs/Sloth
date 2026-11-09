@@ -25,11 +25,11 @@ const HERRAMIENTAS = [
   {
     name: 'generar_voz',
     description:
-      'Genera la narración en Google AI Studio con la voz pedida, en la cuenta de Google del usuario, y deja el WAV (24 kHz, mono) en `salida`. Pasa el texto tal como se narra, o `archivo`: un guion en Markdown se narra sin títulos ni encabezados. Las etiquetas de AI Studio, como <laugh> o <short pause>, van dentro del texto. Una frase tarda unos 5 s y 6 minutos de guion unos 100 s; si no acaba en 40 s, devuelve un id para esperarla con estado_voz. Si el texto y la voz no cambiaron desde el último WAV de esa ruta, sale al momento.',
+      'Genera la narración en Google AI Studio o Fish Audio con la voz pedida, y deja el WAV (24 kHz, mono) en `salida`. Pasa el texto tal como se narra, o `archivo`: un guion en Markdown se narra sin títulos ni encabezados. Una frase tarda unos 5 s y 6 minutos de guion unos 100 s; si no acaba en 40 s, devuelve un id para esperarla con estado_voz. Si el texto y la voz no cambiaron desde el último WAV de esa ruta, sale al momento.',
     inputSchema: {
       type: 'object',
       properties: {
-        voz: { type: 'string', description: 'El nombre de la voz en AI Studio, como Fola o Kore' },
+        voz: { type: 'string', description: 'El nombre de la voz en AI Studio (como Fola o Kore) o "Fish Audio" (o "fish:<reference_id>")' },
         texto: { type: 'string', description: 'Lo que se narra' },
         archivo: { type: 'string', description: 'O la ruta absoluta de un .md o .txt con lo que se narra' },
         salida: { type: 'string', description: 'La ruta absoluta del .wav que deja, como <carpeta del video>/fuentes/voz/ai-studio.wav' }
@@ -60,11 +60,16 @@ function contar(t) {
 const LLAMADAS = {
   async voces({ buscar } = {}) {
     const e = await pedir('/api/voz')
-    if (!e.cuenta) return 'No hay cuenta de Google conectada para AI Studio: que el usuario la conecte en Opciones → Voz. Mientras, pídele la voz.'
+    if (!e.cuenta && !e.fishAudio) return 'No hay cuenta de Google conectada para AI Studio ni clave de Fish Audio en Opciones → Voz. Mientras, pídele la voz.'
     const b = buscar?.toLowerCase()
-    const voces = e.voces.filter((v) => !b || `${v.nombre} ${v.descripcion} ${v.grupo}`.toLowerCase().includes(b))
-    const grupos = Map.groupBy(voces, (v) => v.grupo)
-    return [`Cuenta: ${e.cuenta}. ${voces.length} voces${b ? ` con «${buscar}»` : ''}:`, ...[...grupos].map(([g, vs]) => `${g}: ${vs.map((v) => `${v.nombre} (${v.descripcion})`).join('; ')}`)].join('\n')
+    const partes = []
+    if (e.fishAudio) partes.push('Fish Audio: Clave configurada (modelo s2.1-pro-free). Puedes pedir "Fish Audio" o "fish:<reference_id>".')
+    if (e.cuenta) {
+      const voces = e.voces.filter((v) => !b || `${v.nombre} ${v.descripcion} ${v.grupo}`.toLowerCase().includes(b))
+      const grupos = Map.groupBy(voces, (v) => v.grupo)
+      partes.push(`Cuenta: ${e.cuenta}. ${voces.length} voces${b ? ` con «${buscar}»` : ''}:`, ...[...grupos].map(([g, vs]) => `${g}: ${vs.map((v) => `${v.nombre} (${v.descripcion})`).join('; ')}`))
+    }
+    return partes.join('\n')
   },
   async generar_voz({ voz, texto, archivo, salida }) {
     const t = await pedir('/api/voz/generar', { voz, texto, archivo, salida })

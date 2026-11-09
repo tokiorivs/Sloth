@@ -15,7 +15,10 @@ const GUIA = 'video-base/VOZ.md'
  */
 export function lineaVoz(card: Pick<Card, 'voz'>, voz: string): string {
   if (card.voz === false) return ''
-  if (voz) return `Voz: genérala tú en AI Studio con la voz ${voz} (cómo, en ${GUIA}).`
+  if (voz) {
+    if (voz.toLowerCase().startsWith('fish')) return `Voz: genérala tú con Fish Audio: en generar_voz, la voz «${voz}» tal cual (cómo, en ${GUIA}).`
+    return `Voz: genérala tú en AI Studio con la voz ${voz} (cómo, en ${GUIA}).`
+  }
   return card.voz?.propia ? '' : `Voz: la manda el usuario; no la generes (${GUIA}).`
 }
 

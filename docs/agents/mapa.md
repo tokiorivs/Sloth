@@ -74,6 +74,10 @@ Este es el mapa:
   Google de cada quien (Opciones → Voz). La genera el servidor en la página `voz` del navegador integrado, con su propio
   perfil; los agentes la piden con el MCP `voz` (`mcp.mjs`), y el menú «Voz» del compositor manda la línea `Voz:` que
   siguen las skills (`skills/video-base/VOZ.md`). ADR 0011.
+- `server/thundervoice.ts` y `web/src/ThunderVoice.tsx`: ThunderVoice (app aparte con manhwas, guiones, Libro Maestro
+  y viñetas cortadas). Su MCP se toma del `~/.claude.json` de la persona y se suma a los MCP de cada hilo si su programa
+  existe; `GET /api/thundervoice` da sus proyectos al menú del compositor de las cards con `thundervoice` (la «Intro de
+  manhwa», `skills/intro-manhwa`), que manda la línea `ThunderVoice:`.
 - `server/flow/` y `web/src/Flow.tsx`: imágenes (Nano Banana) y videos (Veo) de Google Flow, con la cuenta de la voz (en
   su Edge y su turno, `voz().google`) y las que se agregan en Opciones (`cuentas.ts`, cada una en su Edge), hasta dos a la
   vez y con ritmo. `elegirCuenta`, el ritmo y los descansos están en `shared/flow.ts`. `pagina.ts` maneja la página, por sus iconos: texto,

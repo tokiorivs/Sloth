@@ -53,7 +53,8 @@ async function abrir() {
   } catch (error) {
     console.error(`No se pudo abrir la ventana de Sloth; va en el navegador. ${error instanceof Error ? error.message : error}`)
   }
-  const [cmd, ...args] = process.platform === 'win32' ? ['cmd', '/c', 'start', '', 'msedge', `--app=${URL}`] : [process.platform === 'darwin' ? 'open' : 'xdg-open', URL]
+  const nav = existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe') || existsSync('C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe') ? 'chrome' : 'msedge'
+  const [cmd, ...args] = process.platform === 'win32' ? ['cmd', '/c', 'start', '', nav, `--app=${URL}`] : [process.platform === 'darwin' ? 'open' : 'xdg-open', URL]
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).on('error', () => {}).unref()
 }
 

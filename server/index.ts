@@ -26,8 +26,10 @@ import { enlacesApi } from './enlaces.ts' // tarjeta de los enlaces
 import { cerrarVigilantesOciosos, etapasApi, folderOf, mismaCwd, queFalta, videosApi, videosDe } from './etapas.ts' // panel de etapas
 import { cerrarMotoresOciosos } from './motor.ts'
 import { modelos3d } from './modelos3d.ts' // modelos 3D
+import { thundervoiceApi } from './thundervoice.ts' // ThunderVoice
+import { flashedit } from './flashedit.ts' // FlashEdit
 import { miniaturas } from './miniaturas.ts' // panel de etapas
-import { guardarMeta, guardarYoutube, opciones } from './opciones.ts'
+import { guardarFishAudio, guardarMeta, guardarYoutube, opciones } from './opciones.ts'
 import { previas } from './previas.ts' // previas de las cards
 import { radar } from './radar/index.ts' // radar
 import { comunidad, llaveDelCreador } from './comunidad.ts' // comunidad
@@ -188,6 +190,7 @@ const maquina = equipo({ app: APP, ocupado }) // tu equipo
 const narrar = voz(APP) // voz de AI Studio
 // Las imágenes y videos de Google Flow, con esa misma cuenta y en ese mismo Edge.
 const generarFlow = flow(APP, narrar.google) // Google Flow
+const editor = flashedit(APP) // FlashEdit
 
 // Si el agente (o tú) edita cards.json, las cards se actualizan solas.
 watch(CARDS, () => broadcast({ type: 'cards', cards: cards() }))
@@ -336,6 +339,8 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
   if (await maquina.api(req, res, path)) return true // tu equipo
   if (await narrar.api(req, res, path)) return true // voz de AI Studio
   if (await generarFlow.api(req, res, path)) return true // Google Flow
+  if (await thundervoiceApi(req, res, path)) return true // ThunderVoice
+  if (await editor.api(req, res, path)) return true // FlashEdit
 
   if (path === '/api/opciones' && method === 'GET') {
     send(res, 200, opciones())
@@ -386,11 +391,11 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
   }
 
   // `meta` es un token, no una llave, pero llega igual: `{ llave }`.
-  const op = /^\/api\/opciones\/(youtube|meta)$/.exec(path)
+  const op = /^\/api\/opciones\/(youtube|meta|fish_audio)$/.exec(path)
   if (op && method === 'POST') {
     const { llave } = await body<{ llave: string | null }>(req)
     try {
-      send(res, 200, await { youtube: guardarYoutube, meta: guardarMeta }[op[1] as 'youtube' | 'meta'](llave?.trim() || null))
+      send(res, 200, await { youtube: guardarYoutube, meta: guardarMeta, fish_audio: guardarFishAudio }[op[1] as 'youtube' | 'meta' | 'fish_audio'](llave?.trim() || null))
     } catch (error) {
       send(res, 400, { error: error instanceof Error ? error.message : String(error) })
     }

@@ -29,6 +29,10 @@ export interface Card {
   voz?: false | { propia: string }
   /** Hace sus clips con `generar_video` en Google Flow: el compositor deja elegir el modelo (menú «Clips», `lineaClips`). */
   clips?: true
+  /** Parte de un proyecto de ThunderVoice: el compositor deja elegirlo (`SelectorThunderVoice`, línea `ThunderVoice:`). */
+  thundervoice?: true
+  /** Su video puede ir al inicio de un capítulo de FlashEdit: el compositor deja elegirlo (`SelectorFlashEdit`, línea `FlashEdit:`). */
+  flashedit?: true
 }
 
 /** Un modelo con su esfuerzo. `medido` dice dónde se midió; sin él, es el de por defecto. */
@@ -331,6 +335,8 @@ export interface Opciones {
    * (`server/ideas/instagram.ts`). `caduca`, si Meta lo dice. No es el token de la nube, que publica.
    */
   meta: { final: string; caduca?: number } | null
+  /** Clave de API de Fish Audio para síntesis de voz gratuita (modelo s2.1-pro-free). */
+  fish_audio?: { final: string } | null
 }
 
 /** La tarjeta de un enlace pegado en el inicio (`server/enlaces.ts`). Sin título, se enseña solo el sitio, o nada. */
@@ -1261,6 +1267,26 @@ export interface VozStudio {
 }
 
 /**
+ * `GET /api/thundervoice` (`server/thundervoice.ts`): si la persona tiene ThunderVoice (su MCP en `~/.claude.json`), si
+ * su servidor web responde y sus proyectos.
+ */
+export interface EstadoThunderVoice {
+  instalado: boolean
+  activo: boolean
+  proyectos: { id: number; nombre: string }[]
+}
+
+/**
+ * `GET /api/flashedit` (`server/flashedit.ts`): si la persona tiene FlashEdit Studio (su MCP y su base), sus series con
+ * sus capítulos y la carpeta donde se guarda una copia de cada intro.
+ */
+export interface EstadoFlashEdit {
+  instalado: boolean
+  series: { id: string; nombre: string; capitulos: { id: string; nombre: string }[] }[]
+  carpeta: string
+}
+
+/**
  * `GET /api/voz`: la cuenta de Google con que Sloth genera las voces (`null`: sin conectar), si está esperando a que
  * entres en Edge, las voces que ofrece la página y cuántas esperan su turno. `error`: lo último que falló al conectar.
  */
@@ -1272,6 +1298,16 @@ export interface EstadoVoz {
   voces: VozStudio[]
   enFila: number
   error?: string
+  /** Si hay una clave de Fish Audio lista para generar. */
+  fishAudio?: boolean
+  /** Las voces de Fish Audio guardadas en Opciones → Voz (`POST /api/voz/fish`). */
+  vocesFish?: VozFish[]
+}
+
+/** Una voz de Fish Audio con el nombre que le pusiste; `id` es el de fish.audio/m/<id>. Se pide como `fish:<id>`. */
+export interface VozFish {
+  nombre: string
+  id: string
 }
 
 /**

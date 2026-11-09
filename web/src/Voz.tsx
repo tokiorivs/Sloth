@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Card, EstadoVoz } from '../../shared/types'
+import type { Card, EstadoVoz, VozFish } from '../../shared/types'
 import { lineaVoz } from '../../shared/voz'
 import { api } from './api'
 import { Picker } from './Composer'
@@ -26,6 +26,8 @@ export function useVoz() {
     estado,
     error: error ?? estado?.error,
     conectar: () => void recibir(api('/api/voz/conectar', {})),
+    /** Guarda la lista de voces de Fish Audio; falla con el error del servidor (un id que no es de Fish). */
+    guardarFish: (voces: VozFish[]) => api<EstadoVoz>('/api/voz/fish', { voces }).then((e) => void setEstado(e)),
     // Devuelve la promesa, y falla si falla, para el aviso de Google Flow; el error queda también aquí.
     desconectar: () =>
       api<EstadoVoz>('/api/voz/desconectar', {}).then(
@@ -40,6 +42,9 @@ export function useVoz() {
 
 export type UsoVoz = ReturnType<typeof useVoz>
 
+/** Una voz de Fish Audio: «Fish Audio» (la de por defecto) o `fish:<id>`. */
+const esFish = (voz: string) => voz.toLowerCase().startsWith('fish')
+
 /** La opción del menú que conecta la cuenta, que no es ninguna voz. */
 const CONECTAR = ' conectar'
 
@@ -51,11 +56,19 @@ export function SelectorVoz({ card, voz, valor, onCambio }: { card: Card; voz: U
   if (card.voz === false) return null
   const e = voz.estado
   const propia = card.voz?.propia ?? 'La mando yo'
-  const label = e?.conectando ? `Voz: entra con Google en ${e.navegador}…` : valor && e?.cuenta ? `Voz: ${valor} · AI Studio` : `Voz: ${propia.toLowerCase()}`
+  const fish = esFish(valor)
+  const deFish = e?.vocesFish?.find((v) => `fish:${v.id}` === valor)
+  const label = e?.conectando
+    ? `Voz: entra con Google en ${e.navegador}…`
+    : fish
+      ? `Voz: ${deFish?.nombre ?? 'Fish Audio'} · Fish`
+      : valor && e?.cuenta
+        ? `Voz: ${valor} · AI Studio`
+        : `Voz: ${propia.toLowerCase()}`
   return (
     <Picker
       label={label}
-      value={e?.cuenta ? valor : ''}
+      value={fish || e?.cuenta ? valor : ''}
       menuWidth={340}
       disabled={!e || e.conectando}
       groups={[{ label: 'Voz', options: [{ value: '', label: propia }] }, ...gruposDeVoces(e, valor)]}
@@ -65,15 +78,26 @@ export function SelectorVoz({ card, voz, valor, onCambio }: { card: Card; voz: U
 }
 
 /**
- * Las voces de AI Studio para un menú, por grupos como los pone la página. Sin cuenta, la opción de conectarla. Una
- * elegida antes que ya no sale entre las de la página (`valor`) sigue a la vista.
+ * Las voces de AI Studio y Fish Audio para un menú, por grupos. Sin cuenta de Google, ofrece conectarla.
  */
 function gruposDeVoces(e: EstadoVoz | undefined, valor = '') {
-  if (!e?.cuenta) return [{ label: 'AI Studio · Gemini 3.8 Flash TTS, gratis', options: [{ value: CONECTAR, label: 'Conectar tu cuenta de Google…' }] }]
-  const grupos = new Map<string, { value: string; label: string }[]>()
-  for (const v of e.voces) grupos.set(`AI Studio · ${v.grupo}`, [...(grupos.get(`AI Studio · ${v.grupo}`) ?? []), { value: v.nombre, label: `${v.nombre} · ${v.descripcion}` }])
-  if (valor && !e.voces.some((v) => v.nombre === valor)) grupos.set('AI Studio', [{ value: valor, label: valor }])
-  return [...grupos].map(([label, options]) => ({ label, options }))
+  const resultado: { label: string; options: { value: string; label: string }[] }[] = []
+  if (e?.fishAudio) {
+    // Las guardadas en Opciones → Voz, y la de por defecto de Fish. Una elegida antes que ya se quitó sigue a la vista.
+    const opciones = (e.vocesFish ?? []).map((v) => ({ value: `fish:${v.id}`, label: `Fish · ${v.nombre}` }))
+    if (esFish(valor) && valor !== 'Fish Audio' && !opciones.some((o) => o.value === valor)) opciones.push({ value: valor, label: `Fish · ${valor.slice(5)}` })
+    opciones.push({ value: 'Fish Audio', label: 'Fish · la voz de por defecto' })
+    resultado.push({ label: 'Fish Audio · s2.1-pro-free (tus voces, en Opciones → Voz)', options: opciones })
+  }
+  if (!e?.cuenta) {
+    resultado.push({ label: 'AI Studio · Gemini 3.8 Flash TTS, gratis', options: [{ value: CONECTAR, label: 'Conectar tu cuenta de Google…' }] })
+  } else {
+    const grupos = new Map<string, { value: string; label: string }[]>()
+    for (const v of e.voces) grupos.set(`AI Studio · ${v.grupo}`, [...(grupos.get(`AI Studio · ${v.grupo}`) ?? []), { value: v.nombre, label: `${v.nombre} · ${v.descripcion}` }])
+    if (valor && !esFish(valor) && !e.voces.some((v) => v.nombre === valor)) grupos.set('AI Studio', [{ value: valor, label: valor }])
+    resultado.push(...[...grupos].map(([label, options]) => ({ label, options })))
+  }
+  return resultado
 }
 
 /** La última voz que se eligió para generar desde un hilo ya empezado. */
@@ -160,6 +184,62 @@ export function VozOpciones({ voz }: { voz: UsoVoz }) {
       </div>
       {e?.conectando && <p className="muted small fila-extra">Google no deja entrar desde una app. Al entrar en {e.navegador} (la primera vez, AI Studio te pide aceptar sus términos), la ventana se cierra y la sesión pasa sola a Sloth.</p>}
       {voz.error && !e?.conectando && <p className="bad small fila-extra">{voz.error}</p>}
+    </div>
+  )
+}
+
+/**
+ * Opciones → Voz: las voces de Fish Audio que usas, con un nombre tuyo y su id (o el enlace de fish.audio, del que se
+ * saca). Salen en el menú «Voz» del compositor como «Fish · <nombre>» y se piden como `fish:<id>`.
+ */
+export function VocesFish({ voz }: { voz: UsoVoz }) {
+  const voces = voz.estado?.vocesFish ?? []
+  const [nombre, setNombre] = useState('')
+  const [id, setId] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState('')
+  if (!voz.estado) return null
+  const guardar = (lista: VozFish[]) => {
+    setOcupado(true)
+    setError('')
+    return voz
+      .guardarFish(lista)
+      .then(() => (setNombre(''), setId('')))
+      .catch((x: Error) => setError(x.message))
+      .finally(() => setOcupado(false))
+  }
+  // Del enlace (fish.audio/m/<id>, con o sin más ruta) se queda el id.
+  const limpio = (/\/m\/([A-Za-z0-9_-]+)/.exec(id)?.[1] ?? id).trim().replace(/^fish:/i, '')
+  return (
+    <div className="item">
+      <div className="fila">
+        <Logo de="fish_audio" nombre="Fish Audio" />
+        <div className="fila-nombre">
+          <strong>Voces de Fish Audio</strong>
+          <span>
+            {voces.length
+              ? `${voces.length} ${voces.length === 1 ? 'voz' : 'voces'} en el menú Voz${voz.estado.fishAudio ? '' : ' · falta la llave de Fish Audio'}`
+              : 'Guarda las voces que usas, con su id de fish.audio, para elegirlas en el menú Voz.'}
+          </span>
+        </div>
+      </div>
+      {voces.map((v) => (
+        <div key={v.id} className="opcion-fila fila-extra">
+          <span>{v.nombre}</span>
+          <span className="muted small mono">{v.id}</span>
+          <button className="ghost" disabled={ocupado} onClick={() => void guardar(voces.filter((o) => o.id !== v.id))}>
+            Quitar
+          </button>
+        </div>
+      ))}
+      <form className="opcion-fila fila-extra" onSubmit={(e) => (e.preventDefault(), nombre.trim() && limpio && void guardar([...voces, { nombre: nombre.trim(), id: limpio }]))}>
+        <input placeholder="Nombre (Narrador esqueleto)" value={nombre} onChange={(e) => setNombre(e.target.value)} autoComplete="off" />
+        <input placeholder="Id o enlace de fish.audio" value={id} onChange={(e) => setId(e.target.value)} autoComplete="off" />
+        <button className="primary" disabled={ocupado || !nombre.trim() || !limpio}>
+          {ocupado ? 'Guardando…' : 'Añadir'}
+        </button>
+      </form>
+      {error && <p className="bad small fila-extra">{error}</p>}
     </div>
   )
 }

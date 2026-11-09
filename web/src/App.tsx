@@ -40,6 +40,8 @@ import { Segmento } from './Segmento'
 import { SelectorVoz, useVoz } from './Voz' // voz de AI Studio
 import { lineaVoz } from '../../shared/voz'
 import { SelectorClips, SelectorImagenes, useChatGPT, useFlow } from './Flow' // Google Flow
+import { lineaThunderVoice, SelectorThunderVoice, useThunderVoice } from './ThunderVoice' // ThunderVoice
+import { lineaFlashEdit, SelectorFlashEdit, useFlashEdit } from './FlashEdit' // FlashEdit
 import { imagenPosible, lineaClips, lineaImagenes, MODELOS_VIDEO, OPCIONES_CLIPS } from '../../shared/flow'
 import { Timeline } from './Timeline'
 import { compact, duration } from './items'
@@ -818,11 +820,12 @@ function NewSession(props: {
   const formatoEscrito = /^Formato: (vertical|horizontal)\s*$/m.exec(props.draft?.text ?? '')?.[1] as 'vertical' | 'horizontal' | undefined
   const formato = formatoEscrito ?? formatos[card.id] ?? 'vertical'
   const conFormato = !!card.etapas
-  // La voz: mandarla tú o que el agente la genere en AI Studio (`Voz.tsx`). La card recuerda la última; sin la cuenta
-  // de Google conectada, la mandas tú.
+  // La voz: mandarla tú o que el agente la genere en AI Studio o Fish Audio (`Voz.tsx`). La card recuerda la última; sin
+  // la cuenta de Google (para AI Studio) o la llave de Fish (para Fish) conectadas, la mandas tú.
   const voz = useVoz()
   const [voces, setVoces] = useStored<Record<string, string>>('voz', {})
-  const vozElegida = voz.estado?.cuenta ? (voces[card.id] ?? '') : ''
+  const vozGuardada = voces[card.id] ?? ''
+  const vozElegida = (vozGuardada.toLowerCase().startsWith('fish') ? voz.estado?.fishAudio : voz.estado?.cuenta) ? vozGuardada : ''
   // Las imágenes: con ChatGPT o con un modelo de Google Flow (`Flow.tsx`), según lo que tengas conectado.
   const hayChatGPT = useChatGPT()
   const [imagenes, setImagenes] = useStored<string>('imagenes', '')
@@ -831,6 +834,14 @@ function NewSession(props: {
   // Los clips de los estilos que los hacen en Flow: el último modelo elegido, o Veo 3.1 - Lite.
   const [clips, setClips] = useStored<string>('clips', '')
   const clipsElegidos = OPCIONES_CLIPS[clips] ? clips : MODELOS_VIDEO[0]
+  // El proyecto de ThunderVoice de las cards que parten de uno (la intro de manhwa): la card recuerda el último.
+  const thunder = useThunderVoice(!!card.thundervoice)
+  const [proyectosTV, setProyectosTV] = useStored<Record<string, string>>('thundervoice', {})
+  const lineaTV = card.thundervoice ? lineaThunderVoice(thunder.estado, proyectosTV[card.id] ?? '') : ''
+  // El capítulo de FlashEdit donde va el video (la intro va a su inicio): la card recuerda el último.
+  const flashEdit = useFlashEdit(!!card.flashedit)
+  const [capitulosFE, setCapitulosFE] = useStored<Record<string, string>>('flashedit', {})
+  const lineaFE = card.flashedit ? lineaFlashEdit(flashEdit.estado, capitulosFE[card.id] ?? '') : ''
   // Un archivo o un enlace soltado en cualquier parte del inicio va al mensaje.
   const soltar = useSoltar()
 
@@ -884,6 +895,8 @@ function NewSession(props: {
             {conFormato && <SelectorVoz card={card} voz={voz} valor={vozElegida} onCambio={(v) => setVoces({ ...voces, [card.id]: v })} />}
             {conFormato && <SelectorImagenes valor={imagenElegida} hayChatGPT={hayChatGPT} voz={voz} flow={flow} onCambio={setImagenes} />}
             {conFormato && card.clips && <SelectorClips valor={clipsElegidos} onCambio={setClips} />}
+            {card.thundervoice && <SelectorThunderVoice uso={thunder} valor={proyectosTV[card.id] ?? ''} onCambio={(id) => setProyectosTV({ ...proyectosTV, [card.id]: id })} />}
+            {card.flashedit && <SelectorFlashEdit uso={flashEdit} valor={capitulosFE[card.id] ?? ''} onCambio={(id) => setCapitulosFE({ ...capitulosFE, [card.id]: id })} />}
             {card.lote && enlaces.length > 1 && (
               <Segmento
                 label="Lote"
@@ -901,7 +914,7 @@ function NewSession(props: {
             )}
           </>
         }
-        vacio={!!laSerie}
+        vacio={!!laSerie || !!lineaTV}
         onSend={async (text, choice, images) => {
           const enlaces = enlacesDe(text)
           const porEnlace = lote && enlaces.length > 1
@@ -915,6 +928,8 @@ function NewSession(props: {
             conFormato && lineaVoz(card, vozElegida),
             conFormato && lineaImagenes(imagenElegida),
             conFormato && card.clips && lineaClips(clipsElegidos),
+            lineaTV,
+            lineaFE,
             // El modelo de cada subagente: lo medido, o lo que elegiste en «Avanzado». La skill lo lee aquí.
             lineaSubagentes(tareas)
           ]

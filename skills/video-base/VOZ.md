@@ -4,6 +4,8 @@ El usuario elige en el compositor de Sloth si manda él la voz o si la generas t
 (Gemini 3.8 Flash TTS, en su cuenta de Google). Lo elegido llega en el primer mensaje:
 
 - `Voz: genérala tú en AI Studio con la voz <Nombre> …`: la generas tú, como se dice abajo. **No se la pidas.**
+- `Voz: genérala tú con Fish Audio: en generar_voz, la voz «fish:<id>» …`: igual, con una voz de Fish Audio que el
+  usuario guardó en Opciones → Voz. Pasa en `voz` exactamente lo que va entre «», con su `fish:`.
 - `Voz: la manda el usuario; no la generes …`: pídesela como diga tu skill, aunque la marca o la skill traigan una
   voz de AI Studio.
 - Sin la línea: lo que diga tu skill.

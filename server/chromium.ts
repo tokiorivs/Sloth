@@ -15,7 +15,11 @@ import type { Browser, Page } from 'playwright-core'
 const enMac = (app: string, exe: string) => ['/Applications', join(homedir(), 'Applications')].map((d) => join(d, `${app}.app`, 'Contents', 'MacOS', exe))
 const CHROME =
   process.platform === 'win32'
-    ? []
+    ? [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        join(homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe')
+      ]
     : process.platform === 'darwin'
       ? enMac('Google Chrome', 'Google Chrome')
       : ['/opt/google/chrome/chrome', '/usr/bin/google-chrome', '/usr/bin/chromium']
@@ -26,8 +30,8 @@ const EDGE =
       ? enMac('Microsoft Edge', 'Microsoft Edge')
       : ['/opt/microsoft/msedge/msedge']
 
-/** El primero que haya, Chrome antes que Edge si `chromePrimero`. */
-export function chromiumDelSistema(chromePrimero: boolean): string | undefined {
+/** El primero que haya, Chrome antes que Edge si `chromePrimero` (por defecto true para preferir Chrome). */
+export function chromiumDelSistema(chromePrimero = true): string | undefined {
   return (chromePrimero ? [...CHROME, ...EDGE] : [...EDGE, ...CHROME]).find((e) => existsSync(e))
 }
 
@@ -36,7 +40,7 @@ export const nombreDe = (exe: string | undefined) => (exe && /edge/i.test(exe) ?
 /** Lo que se dice si no hay ninguno: en Mac casi siempre es que solo hay Safari. */
 export const SIN_CHROMIUM =
   process.platform === 'win32'
-    ? 'No encontré Microsoft Edge, donde se entra con Google.'
+    ? 'No encontré Google Chrome ni Microsoft Edge, donde se entra con Google.'
     : process.platform === 'darwin'
       ? 'Para entrar con Google hace falta Google Chrome (o Microsoft Edge): Safari no deja pasar la sesión a Sloth. Instálalo desde google.com/chrome y vuelve a intentarlo.'
       : 'No encontré Google Chrome ni Microsoft Edge: instala uno para entrar con Google.'

@@ -42,6 +42,14 @@ export function Logo({ de, nombre, chico }: { de: string; nombre?: string; chico
         </svg>
       </span>
     )
+  if (de === 'fish_audio')
+    return (
+      <span className={clase} style={{ background: '#1c1f2b', color: '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M12 3v18M8 6v12M4 9v6M16 6v12M20 9v6" />
+        </svg>
+      </span>
+    )
   if (de === 'opencode')
     return (
       <span className={clase} aria-hidden>

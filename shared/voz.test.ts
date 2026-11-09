@@ -54,6 +54,7 @@ test('la línea Voz: según lo elegido y el estilo', () => {
   assert.equal(lineaVoz({ voz: { propia: 'Voz de edge-tts' } }, ''), '')
   assert.match(lineaVoz({ voz: { propia: 'Voz de edge-tts' } }, 'Kore'), /voz Kore/)
   assert.equal(lineaVoz({ voz: false }, 'Fola'), '')
+  assert.match(lineaVoz({}, 'fish:9185507c029b4c9189dded589bd133c3'), /^Voz: genérala tú con Fish Audio: en generar_voz, la voz «fish:9185507c029b4c9189dded589bd133c3» tal cual/)
 })
 
 /**

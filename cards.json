@@ -279,6 +279,22 @@
     ]
   },
   {
+    "id": "intro-manhwa",
+    "title": "Intro de manhwa",
+    "description": "El gancho de 20 a 45 segundos que abre tu resumen de manhwa en YouTube: el narrador de tu canal cuenta lo más fuerte del capítulo sobre sus viñetas, moviendo la boca con su voz. Elige el proyecto de ThunderVoice y él lee la historia.",
+    "skill": "intro-manhwa",
+    "icon": "megafono",
+    "voz": { "propia": "La voz del narrador" },
+    "thundervoice": true,
+    "flashedit": true,
+    "etapas": [
+      { "nombre": "Gancho", "listo": "guion.md", "copiar": true, "fase": "guion" },
+      { "nombre": "Viñetas", "listo": "guion.json", "fase": "guion" },
+      { "nombre": "Voz", "listo": "public/voz.wav", "fase": "sonido" },
+      { "nombre": "Video", "listo": "out/intro.mp4", "fase": "video" }
+    ]
+  },
+  {
     "id": "nuevo-estilo",
     "title": "Nuevo estilo",
     "description": "Cuéntale el video que quieres hacer, o pásale ejemplos, y Sloth arma tu propio estilo con su card, listo para usarlo como los demás.",

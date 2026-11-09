@@ -8,13 +8,14 @@ import type { McpStdioServerConfig } from '@anthropic-ai/claude-agent-sdk'
 import type { Browser, Page } from 'playwright-core'
 import { WebSocket } from 'ws'
 import { conectarCDP } from '../playwright.ts'
-import { type EstadoVoz, NAVEGADOR_VOZ, type TrabajoVoz, type VozStudio } from '../../shared/types.ts'
+import { type EstadoVoz, NAVEGADOR_VOZ, type TrabajoVoz, type VozFish, type VozStudio } from '../../shared/types.ts'
 import { VENTA } from '../../shared/venta.ts'
 import { segundosWav, textoParaVoz, vocesDelPanel } from '../../shared/voz.ts'
 import { chromiumDelSistema, lanzarChromium, nombreDe, paginaNueva, SIN_CHROMIUM, SIN_VENTANA } from '../chromium.ts'
 import { guardar } from '../disco.ts'
 import { cuerpo } from '../http.ts'
 import { integrado } from '../navegador-agente.ts'
+import { generarFishAudio, llaveFishAudio } from './fish-audio.ts'
 
 /**
  * La voz de los videos, generada en Google AI Studio («Generate speech», Gemini 3.8 Flash TTS) con la cuenta de Google
@@ -82,6 +83,15 @@ export function voz(app: string) {
   let conectando = false
   let error: string | undefined
   const guardarCuenta = () => (mkdirSync(carpeta, { recursive: true }), guardar(archivoCuenta, JSON.stringify({ correo: cuenta, voces }, null, 1)))
+
+  // Las voces de Fish Audio que guardaste en Opciones → Voz, con su nombre y su id: salen en el menú «Voz» como `fish:<id>`.
+  const archivoFish = join(carpeta, 'fish.json')
+  let vocesFish: VozFish[] = []
+  try {
+    vocesFish = JSON.parse(readFileSync(archivoFish, 'utf8'))
+  } catch {
+    // Aún no guardaste ninguna.
+  }
 
   const trabajos = new Map<string, Trabajo>()
   const fila: Trabajo[] = []
@@ -380,6 +390,21 @@ export function voz(app: string) {
 
   async function generar(t: Trabajo) {
     t.estado = 'generando'
+    const esFish = t.voz.toLowerCase().startsWith('fish') || (!cuenta && !!llaveFishAudio())
+    if (esFish) {
+      try {
+        const vozId = t.voz.toLowerCase().startsWith('fish:') ? t.voz.slice(5).trim() : undefined
+        const { segundos } = await generarFishAudio({ texto: t.texto, salida: t.salida, vozId })
+        guardar(`${t.salida}.huella`, t.huella)
+        t.segundos = segundos
+        t.archivo = t.salida
+        t.estado = 'lista'
+      } catch (e) {
+        t.estado = 'error'
+        t.error = mensaje(e)
+      }
+      return
+    }
     const p = await pagina()
     const bajada = join(descargas, t.id)
     try {
@@ -468,7 +493,16 @@ export function voz(app: string) {
   }
 
   const publico = ({ texto: _t, salida: _s, huella: _h, ...t }: Trabajo): TrabajoVoz => t
-  const estado = (): EstadoVoz => ({ cuenta, conectando, navegador: nombreEdge(), voces, enFila: fila.length + (trabajando ? 1 : 0), ...(error ? { error } : {}) })
+  const estado = (): EstadoVoz => ({
+    cuenta,
+    conectando,
+    navegador: nombreEdge(),
+    voces,
+    enFila: fila.length + (trabajando ? 1 : 0),
+    fishAudio: !!llaveFishAudio(),
+    vocesFish,
+    ...(error ? { error } : {})
+  })
 
   // ── La API ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -486,6 +520,16 @@ export function voz(app: string) {
     }
     if (path === '/api/voz/desconectar' && metodo === 'POST') {
       await desconectar()
+      return enviar(200, estado()), true
+    }
+    if (path === '/api/voz/fish' && metodo === 'POST') {
+      const d = await cuerpo<{ voces?: VozFish[] }>(req)
+      const limpias = (d.voces ?? []).map((v) => ({ nombre: String(v.nombre ?? '').trim(), id: String(v.id ?? '').trim().replace(/^fish:/i, '') }))
+      const mala = limpias.find((v) => !v.nombre || !/^[A-Za-z0-9_-]{8,64}$/.test(v.id))
+      if (mala) return enviar(400, { error: mala.nombre ? `El id de «${mala.nombre}» no parece de Fish Audio: es la parte larga de fish.audio/m/<id>.` : 'Cada voz lleva un nombre.' }), true
+      vocesFish = limpias.filter((v, i) => limpias.findIndex((o) => o.id === v.id) === i)
+      mkdirSync(carpeta, { recursive: true })
+      guardar(archivoFish, JSON.stringify(vocesFish, null, 1))
       return enviar(200, estado()), true
     }
     if (path === '/api/voz/voces' && metodo === 'POST') {
@@ -508,7 +552,8 @@ export function voz(app: string) {
       }
       if (!texto || !d.voz?.trim() || !d.salida || !isAbsolute(d.salida) || !/\.wav$/i.test(d.salida))
         return enviar(400, { error: 'Pide el texto (o el archivo con él), la voz y la ruta absoluta del .wav donde va.' }), true
-      if (!cuenta) return enviar(409, { error: 'No hay cuenta de Google conectada para AI Studio: que el usuario la conecte en Opciones → Voz (o en el selector Voz del compositor). Mientras, pídele la voz.' }), true
+      if (!cuenta && !llaveFishAudio() && !d.voz?.toLowerCase().startsWith('fish'))
+        return enviar(409, { error: 'No hay cuenta de Google conectada para AI Studio ni clave de Fish Audio en Opciones. Configura una de las dos.' }), true
       return enviar(200, publico(pedir(texto, d.voz.trim(), resolve(d.salida)))), true
     }
     const t = /^\/api\/voz\/trabajos\/(\w+)$/.exec(path)

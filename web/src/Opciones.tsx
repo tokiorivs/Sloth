@@ -16,8 +16,9 @@ import { RadarOpciones } from './RadarOpciones' // radar
 import { Segmento } from './Segmento'
 import { ConNavegadorRedes, RedesOpciones } from './Redes' // redes
 import { YoutubeOpciones } from './Youtube'
-import { useVoz, VozOpciones } from './Voz' // voz de AI Studio
+import { useVoz, VocesFish, VozOpciones } from './Voz' // voz de AI Studio y Fish Audio
 import { FlowOpciones } from './Flow' // Google Flow
+import { FlashEditOpciones, useFlashEdit } from './FlashEdit' // FlashEdit
 import { VENTA } from '../../shared/venta'
 import './Opciones.css'
 
@@ -45,6 +46,7 @@ function Ajustes({ onDone, iniciando, onIniciando }: { onDone(): void; iniciando
   const agentes = useRef<HTMLElement>(null)
   // Uno para Voz y Google Flow: la cuenta de la voz también genera en Flow, y quitarla en uno la quita en el otro.
   const voz = useVoz()
+  const flashEdit = useFlashEdit()
   // Lo de arriba (Redes) crece al cargar; el anclaje del scroll del navegador mantiene Agentes donde quedó.
   useEffect(() => {
     if (location.hash === `#${AGENTES}`) requestAnimationFrame(() => agentes.current?.scrollIntoView({ block: 'start' }))
@@ -93,8 +95,10 @@ function Ajustes({ onDone, iniciando, onIniciando }: { onDone(): void; iniciando
           <CuentaAgente key={p} p={p} />
         ))}
       </Grupo>
-      <Grupo titulo="Voz" nota="Al pedir un video eliges en «Voz» si la mandas tú o si el agente la genera aquí. La sesión de Google vive en un perfil aparte del navegador de Sloth: ningún agente la usa.">
+      <Grupo titulo="Voz" nota="Al pedir un video eliges en «Voz» si la mandas tú o si el agente la genera aquí con Google AI Studio o Fish Audio.">
         <VozOpciones voz={voz} />
+        <Llave id="fish_audio" />
+        <VocesFish voz={voz} />
       </Grupo>
       <Grupo
         titulo="Google Flow"
@@ -102,6 +106,11 @@ function Ajustes({ onDone, iniciando, onIniciando }: { onDone(): void; iniciando
       >
         <FlowOpciones voz={voz} />
       </Grupo>
+      {flashEdit.estado?.instalado && (
+        <Grupo titulo="FlashEdit" nota="Las intros que hagas pueden ir directo al inicio de un capítulo de FlashEdit Studio; aquí eliges dónde se guarda una copia.">
+          <FlashEditOpciones uso={flashEdit} />
+        </Grupo>
+      )}
       {/* Solo sirven a Ideas: sin la de YouTube, las recomendaciones van con el canal conectado. */}
       {!VENTA && (
         <Grupo titulo="Llaves de API">
@@ -136,7 +145,7 @@ function Grupo({ ref, titulo, extra, nota, children }: { ref?: Ref<HTMLElement>;
 }
 
 /** Las llaves de API que usa Sloth: para qué es cada una y dónde se saca. `logo`, si no es el de su id. */
-const LLAVES: Record<'youtube' | 'meta', { nombre: string; para: string; url: string; logo?: string; ayuda: ReactNode }> = {
+const LLAVES: Record<'youtube' | 'meta' | 'fish_audio', { nombre: string; para: string; url: string; logo?: string; ayuda: ReactNode }> = {
   youtube: {
     nombre: 'YouTube',
     para: 'Opcional. En Ideas, la fecha y los comentarios de todos los outliers, en segundos',
@@ -182,6 +191,21 @@ const LLAVES: Record<'youtube' | 'meta', { nombre: string; para: string; url: st
         </a>{' '}
         («Extend Access Token») y pégalo aquí.
         <br />
+      </>
+    )
+  },
+  fish_audio: {
+    nombre: 'Fish Audio',
+    para: 'Opcional. Síntesis de voz con la API de Fish Audio (modelo gratuito s2.1-pro-free)',
+    url: 'https://fish.audio/app/api-keys',
+    logo: 'fish_audio',
+    ayuda: (
+      <>
+        Es gratis: en{' '}
+        <a href="https://fish.audio" target="_blank" rel="noreferrer">
+          fish.audio
+        </a>
+        , crea una cuenta y genera tu clave en API Keys. Al pegarla aquí, Sloth podrá sintetizar la narración de tus videos directamente con Fish Audio.
       </>
     )
   }
